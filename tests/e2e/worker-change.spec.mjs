@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 const SITE = '1234';
-const URL = '/?site=' + SITE + '&name=TEST';
+const PAGE_URL = '/?site=' + SITE + '&name=TEST';
 const companies = [
   { ptnco_cd: 'A001', ptnco_nm: '가상건설', category: '건축' },
   { ptnco_cd: 'B002', ptnco_nm: '샘플산업', category: '설비' },
@@ -68,7 +68,7 @@ test('missing site prevents request form access and network calls', async ({ pag
 
 test('site selection and request-type UI work', async ({ page }) => {
   await mockBackend(page);
-  await page.goto(URL);
+  await page.goto(PAGE_URL);
   await expect(page.locator('#sitePill')).toContainText(SITE);
   await chooseCompany(page, '#currentCompanyText', '#currentCompanyList', '가상건설');
   await expect(page.locator('#currentCompany')).toHaveValue('A001');
@@ -82,7 +82,7 @@ test('create sends expected payload, stores receipt and shows history', async ({
   const calls = await mockBackend(page, (api) => api === 'create'
     ? { body: { request: { id: 'fake-id-1' }, receiptToken: 'fake-receipt' } }
     : { body: { requests: [pending] } });
-  await page.goto(URL);
+  await page.goto(PAGE_URL);
   await completeForm(page);
   await page.locator('#submitBtn').click();
   await expect(page.locator('#historyView')).toBeVisible();
@@ -102,7 +102,7 @@ test('duplicate response shows warning without storing a receipt', async ({ page
     ? { status: 409, body: { code: 'DUPLICATE_24H', error: 'Duplicate request' } }
     : { body: { requests: [] } });
   page.on('dialog', dialog => dialog.accept());
-  await page.goto(URL);
+  await page.goto(PAGE_URL);
   await completeForm(page);
   await page.locator('#submitBtn').click();
   await expect(page.locator('#historyView')).toBeVisible();
@@ -120,7 +120,7 @@ test('pending request can be edited and deleted with receipt and password', asyn
     if (dialog.type() === 'prompt') await dialog.accept('5678');
     else await dialog.accept();
   });
-  await page.goto(URL);
+  await page.goto(PAGE_URL);
   await page.locator('#tabHistory').click();
   await expect(page.locator('[data-edit="fake-id-1"]')).toBeVisible();
   await page.locator('[data-edit="fake-id-1"]').click();
@@ -142,7 +142,7 @@ test('pending request can be edited and deleted with receipt and password', asyn
 test('mobile viewport shows readable single-column form', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mockBackend(page);
-  await page.goto(URL);
+  await page.goto(PAGE_URL);
   await expect(page.locator('#requestForm')).toBeVisible();
   await expect(page.locator('#submitBtn')).toBeVisible();
   const overflow = await page.evaluate(() =>
