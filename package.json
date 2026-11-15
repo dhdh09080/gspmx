@@ -1,1 +1,16 @@
-{"name":"gspmx-worker-change-frontend","private":true,"version":"0.0.0","scripts":{"test":"node --test tests/*.test.mjs"},"engines":{"node":">=22"}}
+{
+  "name": "gspmx-worker-change-frontend",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:e2e": "playwright test",
+    "test:all": "npm test && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
