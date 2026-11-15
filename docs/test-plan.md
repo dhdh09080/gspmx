@@ -1,12 +1,23 @@
 # Testing roadmap
 
-## Phase 1 — this PR
-Dependency-free Node.js source-contract tests: controls, request types, API operations, receipt token references, pending-only UI and escaping. These tests do NOT prove runtime behavior or backend security.
+## Phase 1 — source-contract tests
+Node.js tests check basic frontend form IDs, request types, API operations, receipt tokens, and escaping call sites. They do **not** prove runtime behavior.
 
-## Phase 2 — separate PR
-Playwright browser tests with mocked Supabase requests: company search, create, history, edit, delete, duplicate response, failures, mobile view. Never call live mutation endpoints.
+## Phase 2 — Playwright browser tests (this PR)
+Run `npm install`, `npx playwright install chromium`, then `npm run test:e2e`. The test suite serves the static `index.html` locally and intercepts **all** requests to the configured Supabase origin. It uses synthetic company and worker records. The suite checks:
+- missing site code blocks form
+- company selection and type UI
+- create request payload, receipt storage, history
+- duplicate response behavior
+- pending request edit/delete payloads
+- mobile horizontal overflow
 
-## Phase 3 — separate backend audit
-Inspect Edge Function and RLS to verify site isolation, token authorization, password validation, pending-only changes and 24-hour duplicate prevention in an isolated environment.
+The CI job starts a local Python static file server. No API mutations are sent to the production Supabase host.
 
-Production deployment requires manual approval.
+## Known limitations
+These tests do not prove real server authorization, 24-hour deduplication, non-pending mutation denial, or token validation. The browser suite tests current behavior and may reveal bugs; do not weaken assertions merely to make CI green.
+
+## Phase 3 — backend security validation
+Review Supabase Edge Function and RLS separately using isolated backend fixtures. Verify site isolation, token authorization, password handling, pending-only mutation rules, and duplicate request enforcement.
+
+Merge and production deployment need human review.
