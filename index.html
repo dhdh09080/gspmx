@@ -101,7 +101,7 @@ dialog::backdrop{background:rgba(16,24,40,.45)}.modal{padding:22px;overflow:auto
     <div id="formArea"><div id="applyView">
       <div class="hero"><h1>근로자 정보변경 신청</h1><p>업체 변경, 퇴직→재직, 재직→퇴직 요청을 신청할 수 있습니다.</p></div>
       <div class="guide-banner"><div class="guide-icon">4</div><div><strong>수정·삭제용 비밀번호가 새로 추가되었습니다.</strong><p>신청할 때 숫자 4자리를 꼭 정해주세요. 나중에 신청 내역을 수정하거나 삭제할 때 사용합니다.</p></div></div>
-      <form id="requestForm"><div class="grid">
+      <p id="catalogStatus" role="status">현장 협력사 목록을 불러오는 중입니다.</p><button id="retryCatalog" class="btn secondary hidden" type="button">목록 다시 불러오기</button><form id="requestForm"><div class="grid">
         <div class="field full"><label>요청 유형 <span class="req">*</span></label><select id="requestType" required><option value="company_change">업체 변경</option><option value="retired_to_active">퇴직 → 재직</option><option value="active_to_retired">재직 → 퇴직</option></select></div>
         <div class="field"><label>요청자 이름 <span class="req">*</span></label><input id="requesterName" maxlength="30" placeholder="예: 김현장" required></div>
         <div class="field"><label>근로자 이름 <span class="req">*</span></label><input id="workerName" maxlength="30" placeholder="예: 홍길동" required></div>
@@ -110,7 +110,7 @@ dialog::backdrop{background:rgba(16,24,40,.45)}.modal{padding:22px;overflow:auto
         <div class="field"><label>현재 업체 <span class="req">*</span></label><div class="combo"><input id="currentCompanyText" type="text" placeholder="업체명을 입력하세요" autocomplete="off" required><input id="currentCompany" type="hidden"><div id="currentCompanyList" class="combo-list"></div></div><div class="hint">일부 글자를 입력한 뒤 Enter를 누르면 선택됩니다.</div></div>
         <div id="targetCompanyField" class="field"><label>변경할 업체 <span class="req">*</span></label><div class="combo"><input id="targetCompanyText" type="text" placeholder="업체명을 입력하세요" autocomplete="off"><input id="targetCompany" type="hidden"><div id="targetCompanyList" class="combo-list"></div></div><div class="hint">업체 변경 요청일 때만 입력합니다.</div></div>
         <div class="field full"><label>변경 사유 <span class="req">*</span></label><textarea id="reason" maxlength="300" placeholder="변경 사유를 입력해주세요." required></textarea><div class="hint"><span id="reasonCount">0</span>/300자</div></div>
-      </div><div class="actions"><button id="submitBtn" class="btn primary" type="submit">변경 신청하기</button><button class="btn secondary" type="reset">다시 작성</button></div><div class="notice"><b>중복 신청 안내</b><br>같은 현장·근로자·전화번호 끝 4자리·요청유형으로 24시간 안에 다시 신청하면 중복 신청으로 차단됩니다. 잘못 입력한 경우 새로 신청하지 말고 <b>신청 내역</b>에서 수정해주세요.</div></form>
+      </div><div class="actions"><button id="submitBtn" disabled class="btn primary" type="submit">변경 신청하기</button><button class="btn secondary" type="reset">다시 작성</button></div><div class="notice"><b>중복 신청 안내</b><br>같은 현장·근로자·전화번호 끝 4자리·요청유형으로 24시간 안에 다시 신청하면 중복 신청으로 차단됩니다. 잘못 입력한 경우 새로 신청하지 말고 <b>신청 내역</b>에서 수정해주세요.</div></form>
       </div>
       <div id="historyView" class="hidden">
         <div class="hero"><h1>신청 내역</h1><p>이 기기에서 신청한 내역만 표시됩니다. 접수대기 상태에서만 수정·삭제할 수 있습니다.</p></div>
@@ -134,16 +134,24 @@ dialog::backdrop{background:rgba(16,24,40,.45)}.modal{padding:22px;overflow:auto
 </div><div class="notice warn">관리자가 처리를 시작한 신청은 수정할 수 없습니다.</div>
 <div class="actions"><button id="cancelEdit" class="btn secondary" type="button">취소</button><button class="btn primary" type="submit">수정 저장</button></div></form></div></dialog>
 <script>
-const SUPABASE_URL='https://zobflntvegpunktphauf.supabase.co';
 const FUNCTION_URL='https://zobflntvegpunktphauf.supabase.co/functions/v1/worker-change-site';
-const SUPABASE_KEY=['sb_publishable_','jkKjWb-Dl_x-IyEqmEYeGA_xdqh5tjj'].join('');
-const API_HEADERS={'apikey':SUPABASE_KEY,'Content-Type':'application/json'};
-const params=new URLSearchParams(location.search);const SITE_CODE=(params.get('site')||'').trim();const SITE_NAME=(params.get('name')||'').trim();
+const params=new URLSearchParams(location.search);const SITE_CODE=(params.get('site')||'').trim();
 let companies=[],editingId='';const $=s=>document.querySelector(s);
 function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2400)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
-function initSite(){if(!/^\d{4,12}$/.test(SITE_CODE)){ $('#siteError').classList.remove('hidden');$('#formArea').classList.add('hidden');return false;}$('#sitePill').classList.remove('hidden');$('#sitePill').textContent=SITE_NAME?`${SITE_NAME} · ${SITE_CODE}`:`현장코드 ${SITE_CODE}`;if(SITE_NAME)$('#brandTitle').textContent=`${SITE_NAME} · 근로자 정보변경`;return true;}
-async function loadCompanies(){const r=await fetch(`${SUPABASE_URL}/rest/v1/worker_change_companies?select=ptnco_cd,ptnco_nm,category&is_active=eq.true&order=ptnco_nm.asc`,{headers:API_HEADERS});if(!r.ok)throw new Error('업체 목록을 불러오지 못했습니다.');companies=await r.json();}
+function initSite(){if(!/^\d{4,12}$/.test(SITE_CODE)){ $('#siteError').classList.remove('hidden');$('#formArea').classList.add('hidden');return false;}$('#sitePill').classList.remove('hidden');$('#sitePill').textContent='현장코드 '+SITE_CODE;return true;}
+async function loadCompanies(){
+  const url=new URL(FUNCTION_URL);
+  url.searchParams.set('api','catalog');url.searchParams.set('site',SITE_CODE);
+  const response=await fetch(url,{cache:'no-store'});
+  if(!response.ok)throw Error('현장 협력사 목록을 불러오지 못했습니다.');
+  const {site,companies:rows}=await response.json();
+  if(site?.code!==SITE_CODE||!Array.isArray(rows))throw Error('신청 링크의 현장을 확인하세요.');
+  $('#sitePill').textContent=site.name+' · '+site.code;
+  $('#brandTitle').textContent=site.name+' · 근로자 정보변경';
+  companies=rows.map(c=>({ptnco_cd:c.code,ptnco_nm:c.name,category:c.category}));
+
+}
 function companyLabel(c){const dup=companies.filter(x=>x.ptnco_nm===c.ptnco_nm).length>1;return `${c.ptnco_nm}${dup&&c.category?` (${c.category})`:''}`;}
 function setupCompanyCombo(textSel,valueSel,listSel){const input=$(textSel),hidden=$(valueSel),list=$(listSel);let matches=[],active=-1;const render=()=>{const q=input.value.trim().toLowerCase();matches=companies.filter(c=>!q||c.ptnco_nm.toLowerCase().includes(q)||(c.category||'').toLowerCase().includes(q)).slice(0,40);active=matches.length?0:-1;list.innerHTML=matches.length?matches.map((c,i)=>`<div class="combo-item ${i===active?'active':''}" data-code="${esc(c.ptnco_cd)}"><strong>${esc(c.ptnco_nm)}</strong>${c.category?`<span class="cat">${esc(c.category)}</span>`:''}</div>`).join(''):'<div class="combo-empty">일치하는 업체가 없습니다.</div>';list.classList.add('open');};const choose=c=>{if(!c)return;hidden.value=c.ptnco_cd;input.value=companyLabel(c);list.classList.remove('open');};input.addEventListener('focus',render);input.addEventListener('input',()=>{hidden.value='';render();});input.addEventListener('keydown',e=>{if(e.key==='ArrowDown'){e.preventDefault();active=Math.min(active+1,matches.length-1)}else if(e.key==='ArrowUp'){e.preventDefault();active=Math.max(active-1,0)}else if(e.key==='Enter'){if(list.classList.contains('open')){e.preventDefault();choose(matches.find(c=>companyLabel(c)===input.value.trim()||c.ptnco_nm===input.value.trim())||matches[active]||matches[0]);}return}else if(e.key==='Escape'){list.classList.remove('open');return}else return;[...list.querySelectorAll('.combo-item')].forEach((el,i)=>el.classList.toggle('active',i===active));});list.addEventListener('mousedown',e=>{const item=e.target.closest('.combo-item');if(!item)return;e.preventDefault();choose(companies.find(c=>c.ptnco_cd===item.dataset.code));});document.addEventListener('mousedown',e=>{if(!input.closest('.combo').contains(e.target))list.classList.remove('open');});return{reset(){input.value='';hidden.value='';list.classList.remove('open')}};}
 let currentCombo,targetCombo;function updateRequestTypeUI(){const isCompany=$('#requestType').value==='company_change';$('#targetCompanyField').classList.toggle('hidden',!isCompany);$('#targetCompanyText').required=isCompany;if(!isCompany)targetCombo?.reset();}
@@ -165,5 +173,27 @@ function openEdit(id){const r=(window._historyRows||[]).find(x=>x.id===id);if(!r
 async function saveEdit(e){e.preventDefault();if(!/^\d{4}$/.test($('#editPassword').value))return toast('비밀번호 4자리를 입력해주세요.');try{await siteApi('update',{requestId:editingId,receiptToken:receiptFor(editingId),password:$('#editPassword').value,requestType:$('#editRequestType').value,requesterName:$('#editRequesterName').value.trim(),workerName:$('#editWorkerName').value.trim(),phone4:$('#editPhone4').value.trim(),currentCompanyCode:$('#editCurrentCompany').value,targetCompanyCode:$('#editRequestType').value==='company_change'?$('#editTargetCompany').value:'',reason:$('#editReason').value.trim()});$('#editDialog').close();toast('신청 내용이 수정되었습니다.');loadHistory();}catch(err){toast(err.message)}}
 async function deleteRequest(id){const password=prompt('신청 시 입력한 숫자 4자리 비밀번호를 입력해주세요.');if(password===null)return;if(!/^\d{4}$/.test(password))return toast('숫자 4자리 비밀번호를 입력해주세요.');if(!confirm('이 신청을 삭제하시겠습니까?'))return;try{await siteApi('delete',{requestId:id,receiptToken:receiptFor(id),password});removeReceipt(id);toast('신청이 삭제되었습니다.');loadHistory();}catch(err){toast(err.message)}}
 $('#tabApply').onclick=()=>showTab('apply');$('#tabHistory').onclick=()=>showTab('history');$('#refreshHistory').onclick=loadHistory;$('#requestType').addEventListener('change',updateRequestTypeUI);$('#reason').addEventListener('input',e=>$('#reasonCount').textContent=e.target.value.length);$('#requestForm').addEventListener('submit',submitRequest);$('#requestForm').addEventListener('reset',()=>setTimeout(()=>{currentCombo.reset();targetCombo.reset();$('#reasonCount').textContent='0';updateRequestTypeUI()},0));$('#historyList').onclick=e=>{const edit=e.target.closest('[data-edit]'),del=e.target.closest('[data-delete]');if(edit)openEdit(edit.dataset.edit);if(del)deleteRequest(del.dataset.delete)};$('#editRequestType').onchange=updateEditTypeUI;$('#editForm').onsubmit=saveEdit;$('#cancelEdit').onclick=()=>$('#editDialog').close();
-(async()=>{if(!initSite())return;try{await loadCompanies();currentCombo=setupCompanyCombo('#currentCompanyText','#currentCompany','#currentCompanyList');targetCombo=setupCompanyCombo('#targetCompanyText','#targetCompany','#targetCompanyList');updateRequestTypeUI();fillEditCompanyOptions();}catch(e){console.error(e);toast('업체 목록 로딩에 실패했습니다.');}})();
+async function refreshCatalog(){
+  const retry=$('#retryCatalog'),status=$('#catalogStatus');
+  retry.disabled=true;
+  try{
+    await loadCompanies();
+    status.textContent=companies.length?'':'등록된 협력사가 없습니다. 현장 담당자에게 확인해 주세요.';
+    $('#submitBtn').disabled=!companies.length;
+  }catch(error){
+    status.textContent='현장 협력사 목록을 불러오지 못했습니다. 연결과 신청 링크를 확인해 주세요.';
+    $('#submitBtn').disabled=true;
+  }finally{
+    retry.disabled=false;
+    retry.classList.toggle('hidden',!$('#submitBtn').disabled);
+    status.classList.toggle('hidden',!status.textContent);
+  }
+}
+if(initSite()){
+  currentCombo=setupCompanyCombo('#currentCompanyText','#currentCompany','#currentCompanyList');
+  targetCombo=setupCompanyCombo('#targetCompanyText','#targetCompany','#targetCompanyList');
+  updateRequestTypeUI();
+  $('#retryCatalog').onclick=refreshCatalog;
+  refreshCatalog();
+}
 </script></body></html>
